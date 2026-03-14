@@ -236,19 +236,16 @@
                 if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
                     val = "-";
                 }
-                
-                if (field.isLink2 && val !== "-") {
-                    td.innerHTML = `<a href="${val}" target="_blank">ホームページ</a>`;
-                } else {
-                    td.textContent = val;
-                }
 
-                if (field.isLink && val !== "-") {
-                    td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
-                } else {
-                    td.textContent = val;
-                }
-                tr.appendChild(td);
+                if (field.isLink2 && val !== "-") {
+                   td.innerHTML = `<a href="${val}" target="_blank">ホームページ</a>`;
+                } 
+                else if (field.isLink && val !== "-") {
+                   td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
+                } 
+                else {
+                td.textContent = val;
+                }                
 
             });
             tbody.appendChild(tr);
