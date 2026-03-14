@@ -238,13 +238,12 @@
                 }
                 
                 if (field.isLink2 && val !== "-") {
-                    td.innerHTML2 = `<a href="${val}" target="_blank">ホームページ</a>`;
+                    td.innerHTML = `<a href="${val}" target="_blank">ホームページ</a>`;
                 } else {
                     td.textContent = val;
                 }
-                tr.appendChild(td);
 
-                                if (field.isLink && val !== "-") {
+                if (field.isLink && val !== "-") {
                     td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
                 } else {
                     td.textContent = val;
