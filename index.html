@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>病院比較ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 22px; color: #0056b3; }
+        .btn-pdf { background-color: #17a2b8; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        
+        .filter-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; }
+        select, button { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        .btn-add { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-add:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        .comparison-table-wrapper { overflow-x: auto; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 12px; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+        th { background-color: #f8f9fa; color: #495057; }
+        .spec-label { background-color: #f1f3f5; font-weight: bold; width: 180px; text-align: left; position: sticky; left: 0; }
+        
+        .chart-container { height: 500px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        #loading { text-align: center; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>病床利用率、病床稼働率により病院比較</h1>
+        <a href="https://hmc48.github.io/hbor_graph2025/manual.pdf" target="_blank" class="btn-pdf">詳細説明</a>
+    </header>
+
+    <div id="loading">データを読み込み中...</div>
+
+    <div class="filter-section">
+        <div>
+            <label>1. 都道府県を選択</label>
+            <select id="prefSelect">
+                <option value="">-- 都道府県 --</option>
+            </select>
+        </div>
+        <div>
+            <label>2. 一般病床規模</label>
+            <select id="sizeSelect" disabled>
+                <option value="">-- 規模 --</option>
+            </select>
+        </div>
+        <div>
+            <label>3. 病院名を選択</label>
+            <select id="hospitalSelect" disabled>
+                <option value="">-- 病院名 --</option>
+            </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+            <button id="addBtn" class="btn-add" disabled>比較リストに追加</button>
+        </div>
+    </div>
+
+    <div style="margin-bottom:10px; font-size: 14px;">
+        比較対象: <span id="comparisonCount" style="font-weight:bold; color:#007bff;">0</span> / 5 病院
+        <button onclick="clearList()" style="width:auto; padding:2px 10px; margin-left:10px; font-size:12px;">リセット</button>
+    </div>
+
+    <div class="comparison-table-wrapper">
+        <table id="specTable">
+            <thead>
+                <tr id="tableHeader">
+                    <th class="spec-label">比較項目</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="compareChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // 定数・設定
+    const GEOJSON_PATH = 'byoushou.geojson';
+    const prefNames = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
+    
+    // スペック表示項目（正式名称はヘッダーにあるため除外）
+    const specFields = [
+        { label: "一般病床", key: "一般病床" },
+        { label: "療養病床", key: "療養病床" },
+        { label: "精神病床", key: "精神病床" },
+        { label: "結核病床", key: "結核病床" },
+        { label: "感染症病床", key: "感染症病床" },
+        { label: "合計病床数", key: "合計病床数" },
+        { label: "URL", key: "url", isLink: true },
+        { label: "平均患者数【一般】", key: "平均患者数【一般】" },
+        { label: "平均患者数【療養】", key: "平均患者数【療養】" },
+        { label: "平均患者数【精神】", key: "平均患者数【精神】" },
+        { label: "平均患者数【結核】", key: "平均患者数【結核】" },
+        { label: "平均患者数【感染】", key: "平均患者数【感染】" },
+        { label: "平均外来患者数", key: "平均外来患者数" },
+        { label: "在院日数【一般】", key: "在院日数【一般】" },
+        { label: "在院日数【療養】", key: "在院日数【療養】" },
+        { label: "在院日数【精神】", key: "在院日数【精神】" },
+        { label: "在院日数【結核】", key: "在院日数【結核】" },
+        { label: "在院日数【感染】", key: "在院日数【感染】" },
+        { label: "利用率(%)【一般】", key: "病床利用率(%)【一般】" },
+        { label: "回転率【一般】", key: "病床回転率【一般】" },
+        { label: "稼働率【一般】", key: "病床稼働率【一般】" },
+        { label: "総合ランク【一般】", key: "総合ランク【一般】" },
+        { label: "AI診断ニュアンス【一般】", key: "AI診断ニュアンス【一般】" },
+        { label: "利用率(%)【療養】", key: "病床利用率(%)【療養】" },
+        { label: "稼働率【療養】", key: "病床稼働率【療養】" },
+        { label: "回転率【療養】", key: "病床回転率【療養】" },
+        { label: "総合ランク【療養】", key: "総合ランク【療養】" },
+        { label: "AI診断ニュアンス【療養】", key: "AI診断ニュアンス【療養】" }
+    ];
+
+    let geoData = [];
+    let compareList = [];
+    let chartInstance = null;
+
+    // 初期化：都道府県リストの作成
+    const prefSelect = document.getElementById('prefSelect');
+    prefNames.forEach((name, index) => {
+        let opt = document.createElement('option');
+        opt.value = index + 1;
+        opt.textContent = name;
+        prefSelect.appendChild(opt);
+    });
+
+    // データ読み込み（fetch）
+    async function loadData() {
+        try {
+            const response = await fetch(GEOJSON_PATH);
+            if (!response.ok) throw new Error('File not found');
+            let text = await response.text();
+            
+            // NaNをnullに置換してパース可能にする
+            let sanitized = text.replace(/:\s*NaN/g, ': null');
+            const json = JSON.parse(sanitized);
+            
+            geoData = json.features.map(f => f.properties).filter(p => p);
+            document.getElementById('loading').style.display = 'none';
+        } catch (err) {
+            document.getElementById('loading').innerHTML = `<span style="color:red">エラー: ${GEOJSON_PATH} が読み込めませんでした。</span>`;
+            console.error(err);
+        }
+    }
+
+    // フィルタリング処理
+    prefSelect.addEventListener('change', () => {
+        const code = prefSelect.value;
+        const filtered = geoData.filter(d => String(d.都道府県コード) == String(code));
+        
+        const sizeSelect = document.getElementById('sizeSelect');
+        sizeSelect.innerHTML = '<option value="">-- 規模 --</option>';
+        const sizes = [...new Set(filtered.map(d => d.一般病床規模))].filter(s => s);
+        sizes.sort().forEach(s => {
+            let opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            sizeSelect.appendChild(opt);
+        });
+        sizeSelect.disabled = false;
+        document.getElementById('hospitalSelect').disabled = true;
+        document.getElementById('addBtn').disabled = true;
+    });
+
+    document.getElementById('sizeSelect').addEventListener('change', function() {
+        const code = prefSelect.value;
+        const size = this.value;
+        const filtered = geoData.filter(d => String(d.都道府県コード) == String(code) && d.一般病床規模 === size);
+        
+        const hospSelect = document.getElementById('hospitalSelect');
+        hospSelect.innerHTML = '<option value="">-- 病院名 --</option>';
+        filtered.sort((a,b) => a.正式名称.localeCompare(b.正式名称, 'ja')).forEach(d => {
+            let opt = document.createElement('option');
+            opt.value = d.ID; opt.textContent = d.正式名称;
+            hospSelect.appendChild(opt);
+        });
+        hospSelect.disabled = false;
+        document.getElementById('addBtn').disabled = false;
+    });
+
+    // 比較リスト追加
+    document.getElementById('addBtn').addEventListener('click', () => {
+        if (compareList.length >= 5) {
+            alert("最大5病院までです。");
+            return;
+        }
+        const id = document.getElementById('hospitalSelect').value;
+        const hospital = geoData.find(d => String(d.ID) === String(id));
+        if (hospital && !compareList.find(c => String(c.ID) === String(id))) {
+            compareList.push(hospital);
+            updateUI();
+        }
+    });
+
+    function clearList() {
+        compareList = [];
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('comparisonCount').textContent = compareList.length;
+        renderTable();
+        renderChart();
+    }
+
+    function renderTable() {
+        const headerRow = document.getElementById('tableHeader');
+        headerRow.innerHTML = '<th class="spec-label">比較項目</th>';
+        compareList.forEach(h => {
+            let th = document.createElement('th');
+            th.textContent = h.正式名称;
+            headerRow.appendChild(th);
+        });
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        specFields.forEach(field => {
+            let tr = document.createElement('tr');
+            let labelTd = document.createElement('td');
+            labelTd.className = 'spec-label';
+            labelTd.textContent = field.label;
+            tr.appendChild(labelTd);
+
+            compareList.forEach(h => {
+                let td = document.createElement('td');
+                let val = h[field.key];
+                if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
+                    val = "-";
+                }
+                
+                if (field.isLink && val !== "-") {
+                    td.innerHTML = `<a href="${val}" target="_blank">HPリンク</a>`;
+                } else {
+                    td.textContent = val;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderChart() {
+        const ctx = document.getElementById('compareChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        if (compareList.length === 0) return;
+
+        const labels = ['利用率点【一般】', '稼働率点【一般】', '回転率点【一般】', '合計点【一般】', '利用率点【療養】', '稼働率点【療養】', '回転率点【療養】', '合計点【療養】'];
+        const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8'];
+
+        const datasets = compareList.map((h, i) => ({
+            label: h.正式名称,
+            data: labels.map(l => {
+                let v = h[l];
+                return (v === null || v === undefined || String(v) === "NaN") ? 0 : v;
+            }),
+            backgroundColor: colors[i % colors.length]
+        }));
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { beginAtZero: true } },
+                plugins: {
+                    title: { display: true, text: '病院スペック比較グラフ' },
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // 起動
+    loadData();
+</script>
+
+</body>
+</html>
