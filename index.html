@@ -230,22 +230,25 @@
             labelTd.textContent = field.label;
             tr.appendChild(labelTd);
 
-            compareList.forEach(h => {
-                let td = document.createElement('td');
-                let val = h[field.key];
-                if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
-                    val = "-";
-                }
-                
-                if (field.isLink && val !== "-") {
-                    td.innerHTML = `<a href="${val}" target="_blank">HPリンク</a>`;
-                } else {
-                    td.textContent = val;
-                }
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
+        compareList.forEach(h => {
+            let td = document.createElement('td');
+            let val = h[field.key];
+            if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
+                val = "-";
+            }
+
+            if (field.isLink && val !== "-") {
+                td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
+            }
+            else if (field.isLink2 && val !== "-") {
+                td.innerHTML = `<a href="${val}" target="_blank">ホームページ</a>`;
+            }
+            else {
+                td.textContent = val;
+            }
+
+            tr.appendChild(td);
+        });            
 
     }
 
