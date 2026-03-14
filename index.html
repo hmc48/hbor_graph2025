@@ -96,7 +96,7 @@
         { label: "結核病床数", key: "結核病床" },
         { label: "感染症病床数", key: "感染症病床" },
         { label: "合計病床数", key: "合計病床数" },
-        { label: "ホームページ", key: "url2", isLink: true },
+        { label: "ホームページ", key: "url2", isLink2: true },
         { label: "医療ネット", key: "url", isLink: true },
         { label: "一日平均患者数【一般】", key: "平均患者数【一般】" },
         { label: "一日平均患者数【療養】", key: "平均患者数【療養】" },
@@ -237,12 +237,20 @@
                     val = "-";
                 }
                 
-                if (field.isLink && val !== "-") {
-                    td.innerHTML = `<a href="${val}" target="_blank">HPリンク</a>`;
+                if (field.isLink2 && val !== "-") {
+                    td.innerHTML2 = `<a href="${val}" target="_blank">ホームページ</a>`;
                 } else {
                     td.textContent = val;
                 }
                 tr.appendChild(td);
+
+                                if (field.isLink && val !== "-") {
+                    td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
+                } else {
+                    td.textContent = val;
+                }
+                tr.appendChild(td);
+
             });
             tbody.appendChild(tr);
         });
@@ -253,7 +261,7 @@
         if (chartInstance) chartInstance.destroy();
         if (compareList.length === 0) return;
 
-        const labels = ['利用率点数【一般】', '稼働率点【一般】', '回転率点【一般】', '合計点【一般】', '利用率点【療養】', '稼働率点【療養】', '回転率点【療養】', '合計点【療養】'];
+        const labels = ['利用率点【一般】', '稼働率点【一般】', '回転率点【一般】', '合計点【一般】', '利用率点【療養】', '稼働率点【療養】', '回転率点【療養】', '合計点【療養】'];
         const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8'];
 
         const datasets = compareList.map((h, i) => ({
