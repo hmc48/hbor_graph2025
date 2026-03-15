@@ -143,21 +143,25 @@
         prefSelect.appendChild(opt);
     });
 
-    // データ読み込み（fetch）
+// データ読み込み（fetch）
     async function loadData() {
         try {
             const response = await fetch(GEOJSON_PATH);
             if (!response.ok) throw new Error('File not found');
             let text = await response.text();
             
-            // NaNをnullに置換してパース可能にする
-            let sanitized = text.replace(/:\s*NaN/g, ': null');
+            // NaN および Infinity を null に置換してパース可能にする
+            let sanitized = text
+                .replace(/:\s*NaN/g, ': null')
+                .replace(/:\s*Infinity/g, ': null')
+                .replace(/:\s*-Infinity/g, ': null');
+            
             const json = JSON.parse(sanitized);
             
             geoData = json.features.map(f => f.properties).filter(p => p);
             document.getElementById('loading').style.display = 'none';
         } catch (err) {
-            document.getElementById('loading').innerHTML = `<span style="color:red">エラー: ${GEOJSON_PATH} が読み込めませんでした。</span>`;
+            document.getElementById('loading').innerHTML = `<span style="color:red">エラー: ${GEOJSON_PATH} が読み込めませんでした。</span><br><small>${err.message}</small>`;
             console.error(err);
         }
     }
