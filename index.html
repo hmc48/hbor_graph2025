@@ -2,47 +2,62 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>病院比較2024年度実績</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
-        h1 { margin: 0; font-size: 22px; color: #0056b3; }
-        .btn-pdf { background-color: #17a2b8; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        /* ベーススタイル */
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif; background-color: #f4f7f9; margin: 0; padding: 10px; color: #333; line-height: 1.4; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         
-        .filter-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        /* ヘッダーのレスポンシブ化（iPhone対策） */
+        header { border-bottom: 2px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        @media (min-width: 768px) {
+            header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+
+        h1 { margin: 0; font-size: 18px; color: #0056b3; line-height: 1.3; }
+        @media (min-width: 768px) { h1 { font-size: 20px; } }
+
+        .header-notice { font-size: 11px; background: #fff3cd; padding: 8px; border-radius: 4px; border-left: 4px solid #ffc107; }
+        @media (min-width: 768px) { .header-notice { font-size: 12px; max-width: 350px; } }
+
+        .btn-pdf { background-color: #17a2b8; color: white; padding: 10px 15px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; }
+        
+        /* フィルターセクション（1列/2列/4列と自動切替） */
+        .filter-section { display: grid; grid-template-columns: 1fr; gap: 12px; background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        @media (min-width: 600px) { .filter-section { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 992px) { .filter-section { grid-template-columns: repeat(4, 1fr); } }
+
         label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; }
-        select, button { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        select, button { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; height: 44px; }
         .btn-add { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
         .btn-add:disabled { background-color: #ccc; cursor: not-allowed; }
         
-        .comparison-table-wrapper { overflow-x: auto; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 12px; }
-        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
-        th { background-color: #f8f9fa; color: #495057; }
-        .spec-label { background-color: #f1f3f5; font-weight: bold; width: 180px; text-align: left; position: sticky; left: 0; }
+        /* テーブルの横スクロールと項目固定（iPhoneで重要） */
+        .comparison-table-wrapper { overflow-x: auto; margin-bottom: 30px; -webkit-overflow-scrolling: touch; border: 1px solid #dee2e6; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 800px; font-size: 12px; }
+        th, td { border-right: 1px solid #dee2e6; border-bottom: 1px solid #dee2e6; padding: 10px; text-align: center; }
+        th { background-color: #f8f9fa; color: #495057; position: sticky; top: 0; z-index: 5; }
+        .spec-label { background-color: #f1f3f5; font-weight: bold; width: 180px; text-align: left; position: sticky; left: 0; z-index: 10; border-right: 2px solid #dee2e6; }
         
-        .chart-container { height: 500px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
-        #loading { text-align: center; color: #666; font-style: italic; }
+        /* グラフ */
+        .chart-container { height: 500px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; position: relative; }
+        #loading { text-align: center; color: #666; font-style: italic; padding: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>◇厚生労働省のオープンデータで病院を比較します<br>
-            （病床利用率、病床稼働率、病床回転率）2024年度実績</h1>
+        <h1>◇オープンデータで病院を比較<br>
+            <small>（病床利用率、病床稼働率、病床回転率）2024年度実績</small></h1>
 
-        <h4>
-        ★★地域ごとの要因から例え評価が低くても<br>
-        必要不可欠な病院はあります。評価結果は<br>
-        あくまで目安です。（参考資料）★★
-        </h4>
+        <div class="header-notice">
+            ★★地域性もあり、評価結果はあくまで参考値です。★★
+        </div>
 
-        <a href="https://hmc48.github.io/hbor_graph2025/manual.pdf"
-           target="_blank"
-           class="btn-pdf">評価基準の説明</a>
+        <a href="https://hmc48.github.io/hbor_graph2025/manual.pdf" target="_blank" class="btn-pdf">評価基準の説明</a>
     </header>
 
     <div id="loading">データを読み込み中...</div>
@@ -71,9 +86,9 @@
         </div>
     </div>
 
-    <div style="margin-bottom:10px; font-size: 14px;">
-        比較対象: <span id="comparisonCount" style="font-weight:bold; color:#007bff;">0</span> / 5 病院
-        <button onclick="clearList()" style="width:auto; padding:2px 10px; margin-left:10px; font-size:12px;">リセット</button>
+    <div style="margin-bottom:10px; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+        <span>比較対象: <span id="comparisonCount" style="font-weight:bold; color:#007bff;">0</span> / 5 病院</span>
+        <button onclick="clearList()" style="width:auto; padding:5px 15px; font-size:12px; height: auto;">リセット</button>
     </div>
 
     <div class="comparison-table-wrapper">
@@ -83,8 +98,7 @@
                     <th class="spec-label">比較項目</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
-                </tbody>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
 
@@ -98,7 +112,7 @@
     const GEOJSON_PATH = 'byoushou.geojson';
     const prefNames = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
     
-    // スペック表示項目（正式名称はヘッダーにあるため除外）
+    // スペック表示項目（すべて復元）
     const specFields = [
         { label: "一般病床数(床)", key: "一般病床" },
         { label: "療養病床数(床)", key: "療養病床" },
@@ -148,21 +162,19 @@
         prefSelect.appendChild(opt);
     });
 
-// データ読み込み（fetch）
+    // データ読み込み
     async function loadData() {
         try {
             const response = await fetch(GEOJSON_PATH);
             if (!response.ok) throw new Error('File not found');
             let text = await response.text();
             
-            // NaN および Infinity を null に置換してパース可能にする
             let sanitized = text
                 .replace(/:\s*NaN/g, ': null')
                 .replace(/:\s*Infinity/g, ': null')
-                .replace(/:\s*-Infinity/g, ': null');
+                .replace(/:\s*(-Infinity)/g, ': null');
             
             const json = JSON.parse(sanitized);
-            
             geoData = json.features.map(f => f.properties).filter(p => p);
             document.getElementById('loading').style.display = 'none';
         } catch (err) {
@@ -171,7 +183,7 @@
         }
     }
 
-    // フィルタリング処理
+    // 都道府県選択時の処理
     prefSelect.addEventListener('change', () => {
         const code = prefSelect.value;
         const filtered = geoData.filter(d => String(d.都道府県コード) == String(code));
@@ -189,6 +201,7 @@
         document.getElementById('addBtn').disabled = true;
     });
 
+    // 規模選択時の処理
     document.getElementById('sizeSelect').addEventListener('change', function() {
         const code = prefSelect.value;
         const size = this.value;
@@ -230,6 +243,7 @@
         renderChart();
     }
 
+    // テーブルの描画
     function renderTable() {
         const headerRow = document.getElementById('tableHeader');
         headerRow.innerHTML = '<th class="spec-label">比較項目</th>';
@@ -248,29 +262,27 @@
             labelTd.textContent = field.label;
             tr.appendChild(labelTd);
 
-        compareList.forEach(h => {
-            let td = document.createElement('td');
-            let val = h[field.key];
-            if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
-                val = "-";
-            }
+            compareList.forEach(h => {
+                let td = document.createElement('td');
+                let val = h[field.key];
+                if (val === null || val === undefined || String(val) === "NaN" || val === "-") {
+                    val = "-";
+                }
 
-            if (field.isLink && val !== "-") {
-                td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
-            }
-            else if (field.isLink2 && val !== "-") {
-                td.innerHTML = `<a href="${val}" target="_blank">ホームページ</a>`;
-            }
-            else {
-                td.textContent = val;
-            }
-
-            tr.appendChild(td);
-        });            
-        tbody.appendChild(tr);
-      });
+                if (field.isLink && val !== "-") {
+                    td.innerHTML = `<a href="${val}" target="_blank">医療ネット</a>`;
+                } else if (field.isLink2 && val !== "-") {
+                    td.innerHTML = `<a href="${val}" target="_blank">HP</a>`;
+                } else {
+                    td.textContent = val;
+                }
+                tr.appendChild(td);
+            });            
+            tbody.appendChild(tr);
+        });
     }
 
+    // グラフの描画（すべての比較項目を復元）
     function renderChart() {
         const ctx = document.getElementById('compareChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
@@ -298,13 +310,12 @@
                 scales: { x: { beginAtZero: true } },
                 plugins: {
                     title: { display: true, text: '評価点数比較グラフ' },
-                    legend: { position: 'bottom' }
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
                 }
             }
         });
     }
 
-    // 起動
     loadData();
 </script>
 
