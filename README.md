@@ -12,7 +12,7 @@
 ---
 
 ## サイト
-https://hmc48.github.io
+https://hmc48.github.io　
 https://hmc48.github.io/hbor_graph2025/
 ---
 
